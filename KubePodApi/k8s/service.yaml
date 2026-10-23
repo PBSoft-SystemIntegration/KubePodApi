@@ -6,7 +6,7 @@ spec:
   selector:
     app: pod-info
   ports:
-    - port: 80
-      targetPort: 8080
-      protocol: TCP
-  type: LoadBalancer
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP

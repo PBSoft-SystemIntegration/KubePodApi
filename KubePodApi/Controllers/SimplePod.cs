@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace KubePodApi.Controllers;
 
 [ApiController]
-public class SimplePod(IHttpClientFactory httpClientFactory) : ControllerBase
+public class SimplePod: ControllerBase
 {
     [HttpGet("Info")]
     public string GetInternalInfo()
@@ -16,7 +16,7 @@ public class SimplePod(IHttpClientFactory httpClientFactory) : ControllerBase
     [HttpGet("GetFromOtherService/{serviceUrlAndPort}")]
     public async Task<string> GetFromOtherService(string serviceUrlAndPort)
     {
-        var client = httpClientFactory.CreateClient();
+        HttpClient client = new HttpClient();
         return await client.GetStringAsync($"http://{serviceUrlAndPort}/Info");
     }
 }

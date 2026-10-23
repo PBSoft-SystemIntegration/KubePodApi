@@ -14,10 +14,9 @@ spec:
     spec:
       containers:
         - name: pod-info-container2
-          image: kube_image_rest:0.1.0
-          imagePullPolicy: Never
+          image: emilstephansen/kube_image_rest:0.1.0
           ports:
-            - containerPort: 8080
+            - containerPort: 80
           env:
             - name: POD_NAME
               valueFrom:
