@@ -10,6 +10,6 @@ app.MapOpenApi();
 app.MapScalarApiReference();
 app.MapControllers();
 
-Console.WriteLine($"pod {Environment.GetEnvironmentVariable("POD_NAME")} " +
+Console.WriteLine($"pod {Environment.GetEnvironmentVariable("POD_NAME")} ");
                   $"internal cluster IP: {Environment.GetEnvironmentVariable("POD_IP")}");
 app.Run();
