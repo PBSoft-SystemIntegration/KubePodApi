@@ -10,7 +10,7 @@ public class SimplePod: ControllerBase
     {
         var name = Environment.GetEnvironmentVariable("POD_NAME");
         var ip = Environment.GetEnvironmentVariable("POD_IP");
-        return $"pod {name} internal cluster IP: {ip} Version: 0.1.0";
+        return $"pod {name} internal cluster IP: {ip} Version: 0.3.0";
     }
 
     [HttpGet("GetFromOtherService/{serviceUrlAndPort}")]

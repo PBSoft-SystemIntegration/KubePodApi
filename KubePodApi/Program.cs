@@ -1,3 +1,5 @@
+using KubePodApi.HealthCheck;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,7 +7,16 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient();
 
+builder.Services.AddHealthChecks()
+    .AddCheck<StartupHealthCheck>("startup");
+
 var app = builder.Build();
+
+app.MapHealthChecks("/healthz/startup", new HealthCheckOptions
+{
+    Predicate = check => check.Name == "startup"
+});
+
 app.MapOpenApi();
 app.MapScalarApiReference();
 app.MapControllers();

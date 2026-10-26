@@ -1,0 +1,18 @@
+﻿apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-pod
+spec:
+  containers:
+  - name: probe-pod
+    image: probe-pod:latest
+    imagePullPolicy: Never
+    env:
+    - name: CALLS_BEFORE_SUCCESS
+      value: "4"
+    startupProbe:
+      httpGet:
+        path: /healthz/startup
+        port: 80
+      failureThreshold: 5  
+      periodSeconds: 10
