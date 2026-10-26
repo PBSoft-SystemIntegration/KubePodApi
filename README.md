@@ -1,3 +1,7 @@
+## Dag 2: øvelse med probes
+
+Se [øvelsesvejledningen](KubePodApi/k8s/probes/README.md).
+
 # KubePodApi – dag 1
 
 .NET 10, controllers og Scalar. Åbn KubePodApi.slnx i Visual Studio.
@@ -5,7 +9,7 @@ Kubernetes-filerne findes i projektets **k8s**-mappe.
 
 ## API'et fra slidesene
 
-- `/Info`: viser POD_NAME, POD_IP og Version: 0.1.0.
+- `/Info`: viser POD_NAME, POD_IP og versionsnummer.
 - `/GetFromOtherService/{serviceUrlAndPort}`: kalder en anden apps `/Info`.
 - `/scalar`: brugerflade til at afprøve de to endpoints.
 - Ved opstart skrives podnavn og IP i loggen.
@@ -36,7 +40,7 @@ kubectl get pods
 Vælg et podnavn, og lav en tunnel:
 
 ```powershell
-kubectl port-forward pod/PODNAVN 8000:8080
+kubectl port-forward pod/PODNAVN 8000:80
 ```
 
 Åbn http://localhost:8000/Info eller http://localhost:8000/scalar.
@@ -69,11 +73,10 @@ kubectl port-forward service/pod-info-service 8000:80
 | Andet Deployment / label | pod-info-deployment2 / app: pod-info2 |
 | Ekstern Service | pod-info-service, LoadBalancer, selector app: pod-info |
 | Intern Service | pod-info-service2, ClusterIP, selector app: pod-info2 |
-| Containerens lytteport | 8080 |
-| Service port / targetPort | 80 / 8080 |
+| Containerens lytteport | 80 |
+| Service port / targetPort | 80 / 80 |
 
-Containerporten er ændret fra de gamle slides' 80 til 8080. Ret pod-tunnels til
-fx `8000:8080`, containerPort til 8080 og Service targetPort til 8080.
+Appen lytter på port 80 i Dockerfile. containerPort og Service targetPort er også 80.
 Service-navne og port 80 bruges stadig til intern kommunikation.
 
 `imagePullPolicy: Never` forudsætter, at noden har adgang til det lokalt byggede image.
@@ -87,5 +90,4 @@ Port-forward til en Service vælger en pod og demonstrerer ikke trafikfordeling.
 kubectl delete -f ./KubePodApi/k8s
 ```
 
-API'et er bevidst et lille undervisningseksempel. Der er ingen healthchecks endnu,
-ingen generel URL-proxy og ingen ekstra validerings- eller fejlhåndteringskode.
+API'et er bevidst et lille undervisningseksempel. Probe-øvelsen til dag 2 er beskrevet i linket øverst.
