@@ -9,9 +9,9 @@ To POST-endpoints i Scalar kan sætte readiness og liveness til true/false.
 Det er en simulation af fejl, kun til undervisningen. En genstart nulstiller
 begge værdier til true og startup-tælleren til 0.
 
-I får en pod og en færdig Service i denne mappe. **Udfyld selv de tre probes i
-ProbePod.yaml**, én ad gangen. API-kode, porte, labels og selector er allerede klar.
-Løsningsforslaget i `solution/` er til kontrol bagefter.
+Dette er løsningen på branchen `probes-solution`. Alle tre probes i
+ProbePod.yaml er udfyldt. Følg forsøgene nedenfor for at kontrollere resultatet.
+Elevens startpunkt uden udfyldte probes findes på branchen `probes-startup`.
 
 ## 1. Byg og start (fra mappen med KubePodApi.slnx)
 

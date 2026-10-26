@@ -22,8 +22,21 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
-      # Udfyld selv under containeren (samme niveau som env):
-      # 1. startupProbe: /healthz/startup
-      # 2. readinessProbe: /healthz/readiness
-      # 3. livenessProbe: /healthz/liveness
-      # Brug httpGet, port 80, periodSeconds og failureThreshold.
+      startupProbe:
+        httpGet:
+          path: /healthz/startup
+          port: 80
+        periodSeconds: 5
+        failureThreshold: 5
+      readinessProbe:
+        httpGet:
+          path: /healthz/readiness
+          port: 80
+        periodSeconds: 5
+        failureThreshold: 1
+      livenessProbe:
+        httpGet:
+          path: /healthz/liveness
+          port: 80
+        periodSeconds: 5
+        failureThreshold: 3
