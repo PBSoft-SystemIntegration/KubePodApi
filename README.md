@@ -1,93 +1,107 @@
-## Dag 2: øvelse med probes
+# Øvelse: startup, readiness og liveness
 
-Se [øvelsesvejledningen](KubePodApi/k8s/probes/README.md).
+## Det får I, og det skal I selv lave
 
-# KubePodApi – dag 1
+API'et har tre healthchecks på `/healthz/startup`, `/healthz/readiness` og
+`/healthz/liveness`. De returnerer 200 (Healthy) eller 503 (Unhealthy).
+Startup kræver det antal kald, som `CALLS_BEFORE_SUCCESS` angiver.
+To POST-endpoints i Scalar kan sætte readiness og liveness til true/false.
+Det er en simulation af fejl, kun til undervisningen. En genstart nulstiller
+begge værdier til true og startup-tælleren til 0.
 
-.NET 10, controllers og Scalar. Åbn KubePodApi.slnx i Visual Studio.
-Kubernetes-filerne findes i projektets **k8s**-mappe.
+I får en pod og en færdig Service i `KubePodApi/k8s/probes/`. **Udfyld selv de tre probes i
+ProbePod.yaml**, én ad gangen. API-kode, porte, labels og selector er allerede klar.
+Dette er startpunktet på branchen `probes-startup`. Løsningen findes på den separate branch `probes-solution`, hvor ProbePod.yaml er udfyldt.
 
-## API'et fra slidesene
-
-- `/Info`: viser POD_NAME, POD_IP og versionsnummer.
-- `/GetFromOtherService/{serviceUrlAndPort}`: kalder en anden apps `/Info`.
-- `/scalar`: brugerflade til at afprøve de to endpoints.
-- Ved opstart skrives podnavn og IP i loggen.
-
-POD_NAME og POD_IP leveres af deployment-filerne via Downward API.
-De er tomme ved almindelig lokal kørsel uden disse miljøvariabler.
-
-## Lokal kørsel
-
-Fra mappen med løsningen:
+## 1. Byg og start (fra mappen med KubePodApi.slnx)
 
 ```powershell
-dotnet run --project ./KubePodApi
+docker build -t probe-pod:exercise-v1 ./KubePodApi
+docker save probe-pod:exercise-v1 -o "$env:TEMP\probe-exercise.tar"
+docker cp "$env:TEMP\probe-exercise.tar" desktop-control-plane:/probe-exercise.tar
+docker exec desktop-control-plane ctr -n k8s.io images import /probe-exercise.tar
+kubectl apply -f ./KubePodApi/k8s/probes/ProbePod.yaml
+kubectl apply -f ./KubePodApi/k8s/probes/ProbeService.yaml
 ```
 
-Åbn http://localhost:5034/scalar.
+Det indlæser imaget i jeres ene kind-node. Har I allerede importeret samme tag
+før en kodeændring, så brug et nyt tag både ved build/import og i pod-filen.
+Alternativt kan I pushe et nyt tag til eget Docker Hub-repository og ændre
+`image` samt `imagePullPolicy` til `IfNotPresent` i pod-filen.
 
-## Byg og opret første Deployment
+## 2. Startup: lykkes og fejler
 
-Fra mappen med løsningen:
+Tilføj startupProbe med httpGet til `/healthz/startup`, port 80,
+periodSeconds 5 og failureThreshold 5. Behold CALLS_BEFORE_SUCCESS = "4".
+Pod'en skal genoprettes, hver gang I ændrer miljøvariabler eller probes:
 
 ```powershell
-docker build -t kube_image_rest:0.1.0 ./KubePodApi
-kubectl apply -f ./KubePodApi/k8s/deployment.yaml
-kubectl get pods
+kubectl delete pod probes-exercise
+kubectl apply -f ./KubePodApi/k8s/probes/ProbePod.yaml
+kubectl get pod probes-exercise -w
 ```
 
-Vælg et podnavn, og lav en tunnel:
+Ctrl+C stopper kun visningen. Forvent READY 0/1 under opstart og derefter 1/1.
+Skift værdien fra "4" til "6", genopret og se RESTARTS stige: checket kan ikke nå
+at lykkes inden fem fejl. Sæt værdien tilbage til "4" og genopret inden næste del.
+Se Events med `kubectl describe pod probes-exercise` og appens output med
+`kubectl logs probes-exercise`. Manuelle kald til startup-endpointet tæller også med.
+
+## 3. Readiness: stop og genoptag trafik uden genstart
+
+Tilføj readinessProbe til `/healthz/readiness`, port 80, periodSeconds 5 og
+failureThreshold 1. Behold startup-proben og genopret pod'en.
+Vent på READY 1/1. Start derefter en direkte tunnel i en separat terminal:
 
 ```powershell
-kubectl port-forward pod/PODNAVN 8000:80
+kubectl port-forward pod/probes-exercise 9000:80
 ```
 
-Åbn http://localhost:8000/Info eller http://localhost:8000/scalar.
-Stop tunnelen med Ctrl+C. Deploymentet holder tre pods kørende og erstatter slettede pods.
+Åbn **http://localhost:9000/scalar**. Under POST `/demo/readiness/{healthy}`
+indtastes false, og kaldet udføres. Efter næste probe bliver READY 0/1.
 
-## Kommunikation mellem to apps
+Test Servicen fra en anden terminal (ny forbindelse og ingen browsercache):
 
 ```powershell
-kubectl apply -f ./KubePodApi/k8s/deployment2.yaml
-kubectl apply -f ./KubePodApi/k8s/service.yaml
-kubectl apply -f ./KubePodApi/k8s/service2.yaml
-kubectl get services
+curl.exe --max-time 5 -H "Connection: close" http://localhost:8085/Info
 ```
 
-Åbn Scalar via den første Services eksterne adresse, eller lav en tunnel:
+Kaldet virker normalt før fejlen, men fejler eller får timeout, når pod'en ikke
+er Ready. Servicen kan bruge nogle sekunder på at opdatere trafikfordelingen.
+Sæt true gennem **den direkte tunnel**, vent på READY 1/1 og gentag kaldet.
+Svaret skal vende tilbage, og RESTARTS skal være uændret.
+
+Servicen er en almindelig LoadBalancer-Service; den matcher pod'ens label.
+Port 8085 på Servicen fører til appens port 80. Der kræves ingen speciel
+probe-konfiguration på Servicen. En direkte pod-tunnel omgår trafikfordelingen,
+så brug aldrig tunnelen som bevis for, at readiness stopper trafik.
+Hvis localhost:8085 ikke virker allerede før forsøget, kontrollér
+`kubectl get service probes-exercise`; løs den eksterne adgang først.
+
+## 4. Liveness: genstart containeren
+
+Tilføj livenessProbe til `/healthz/liveness`, port 80, periodSeconds 5 og
+failureThreshold 3. Behold de to andre probes og genopret pod'en.
+Genåbn tunnelen og Scalar, når pod'en er Ready.
+Sæt false med POST `/demo/liveness/{healthy}`. Lad readiness forblive true.
+
+Efter tre fejl påbegyndes nedlukning. Appen kan få op til 30 sekunder til at stoppe.
+Følg `kubectl get pod probes-exercise -w` og Events. RESTARTS skal stige,
+podnavnet skal være det samme, og startup-proben skal lykkes på ny.
+Tunnelen kan afbrydes ved genstart; start den igen. Liveness er nu automatisk
+Healthy, fordi processen er genstartet.
+
+## Færdig når
+
+- Alle tre probes er udfyldt sammen i jeres pod-YAML.
+- I har vist startup-succes og genstart efter startup-fejl.
+- I har vist, at readiness stopper/genoptager Service-trafik uden genstart.
+- I har vist, at liveness øger RESTARTS og nulstiller demo-tilstanden.
+- I kan forklare forskellen på de tre reaktioner.
+
+Ryd kun øvelsens ressourcer op:
 
 ```powershell
-kubectl port-forward service/pod-info-service 8000:80
+kubectl delete -f ./KubePodApi/k8s/probes/ProbePod.yaml
+kubectl delete -f ./KubePodApi/k8s/probes/ProbeService.yaml
 ```
-
-Åbn http://localhost:8000/scalar. Afprøv GetFromOtherService med værdien
-`pod-info-service2:80` (uden http://). Svaret kommer fra en pod i det andet Deployment.
-
-## Navne og porte, der skal passe med slidesene
-
-| Del | Værdi |
-|---|---|
-| Image i begge Deployments | kube_image_rest:0.1.0 |
-| Første Deployment / label | pod-info-deployment / app: pod-info |
-| Andet Deployment / label | pod-info-deployment2 / app: pod-info2 |
-| Ekstern Service | pod-info-service, LoadBalancer, selector app: pod-info |
-| Intern Service | pod-info-service2, ClusterIP, selector app: pod-info2 |
-| Containerens lytteport | 80 |
-| Service port / targetPort | 80 / 80 |
-
-Appen lytter på port 80 i Dockerfile. containerPort og Service targetPort er også 80.
-Service-navne og port 80 bruges stadig til intern kommunikation.
-
-`imagePullPolicy: Never` forudsætter, at noden har adgang til det lokalt byggede image.
-Det er endnu ikke afprøvet i Docker Desktop/kind herfra. Ved ErrImageNeverPull skal
-image-tilgængeligheden undersøges; API'et og image-build alene bekræfter ikke dette.
-Port-forward til en Service vælger en pod og demonstrerer ikke trafikfordeling.
-
-## Oprydning
-
-```powershell
-kubectl delete -f ./KubePodApi/k8s
-```
-
-API'et er bevidst et lille undervisningseksempel. Probe-øvelsen til dag 2 er beskrevet i linket øverst.
